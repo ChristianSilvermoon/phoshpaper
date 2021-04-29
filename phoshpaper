@@ -2,11 +2,51 @@
 # Phoshpaper is not associated with Purism, etc.
 # License: The Unlicense
 
+[ "$XDG_CONFIG_HOME" ] || XDG_CONFIG_HOME="/home/$USER/.config"
+
+CUSTOM_GTK_CSS=$(echo "||/*|*Setabackgroundforthelockscreen.|*/|phosh-lockscreen,.phosh-lockshield{|background-image:linear-gradient(rgba(0,0,0,0.7),rgba(0,0,0,0.7)),|url('file://$HOME/.phosh-lockscreen-image');|background-size:cover;|background-position:center;|}||/*|*Setabackgroundfortheappgrid.|*/|phosh-app-grid{|background-image:linear-gradient(rgba(0,0,0,0.7),rgba(0,0,0,0.7)),|url('file://$HOME/.phosh-appgrid-image');|background-size:cover;|background-position:center;|}|" | tr '|' '\n')
+
+
 menu() {
 	zenity --title "Phoshpaper" "$@"
 }
 
 
+prompt_install_custom_css() {
+	zenity --question --no-wrap \
+		--ok-label "Get Custom!" \
+		--cancel-label "Eep, No Way!" \
+		--text "Please read carefully\!\nIn order to customize the\n<b>Lock Screen</b> \&amp; <b>App Grid</b>\n\n<b>The following file <i>MUST</i> be modified:</b>\n$XDG_CONFIG_HOME/gtk-3.0/gtk.css\n\n<b>If needed, a backup will be made at:</b>\n$XDG_CONFIG_HOME/gtk-3.0/gtk.css.bak"
+
+	[ "$?" = "1" ] && exit
+	[ -d "$XDG_CONFIG_HOME/gtk-3.0" ] || mkdir -p "$XDG_CONFIG_HOME/gtk-3.0"
+	[ -f "$XDG_CONFIG_HOME/gtk-3.0/gtk.css" ] && cp -av "$XDG_CONFIG_HOME/gtk-3.0/gtk.css" "$XDG_CONFIG_HOME/gtk-3.0/gtk.css.bak"
+
+	echo "$CUSTOM_GTK_CSS" >> "$XDG_CONFIG_HOME/gtk-3.0/gtk.css"
+
+	touch "$XDG_CONFIG_HOME/phoshpaper-no-css-prompt"
+}
+
+
+select_image() {
+	local file
+	file=$(
+		zenity --file-selection \
+			--file-filter="*.png" \
+			--file-filter="*.jpg" \
+			--file-filter="*.jpeg"
+	)
+
+	if [ "$?" = "0" ]; then
+		if [ "$(echo "$file" | grep -E "\.(jpg|jpeg|png)$")" = "" ]; then
+			menu --error --no-wrap --text "Not a valid image?\nExtension wasn't valid: jpeg, jpg, or png"
+			exit 1
+		else
+			echo "$file"
+		fi
+
+	fi
+}
 
 main_menu() {
 	main_menu_result=$(
@@ -17,16 +57,42 @@ main_menu() {
 			--column "state" --column "#" --column "Choose an Option" \
 			TRUE "1" "Select App Grid Wallpaper" \
 			FALSE "2" "Select Lock Screen Wallpaper" \
-			FALSe "3" "Remove Custom GTK.css"
+			FALSE "3" "Restart Phosh via systemctl" \
+			FALSE "4" "Revert Custom GTK.css"
 	)
 }
 
+restart_phosh() {
+	menu --question --no-wrap --text "Phosh may need to be restarted for \nchanges to take effect\n\nThis script assumes you have \n<b>systemd</b> and <b>pkexec</b>\n\nIf this is not how your distro handles Phosh\nPlease manually restart it\nor reboot your device.\n\nDo that now?\n• All apps will close\n• You will lose any unsaved work!"
+	if [ "$?" = "0"] && [ "$(command -v systemctl)" ] && [ "$(command -v pkexec)" ]; then
+	       	pkexec systemctl restart phosh
+	fi
+	exit
+}
+
 while true; do
+	[ -f "$XDG_CONFIG_HOME/phoshpaper-no-css-prompt" ] || prompt_install_custom_css
 	main_menu
 
-	echo "Main Menu: $main_menu_result"
+	#echo "Main Menu: $main_menu_result"
 
-	if [ "$main_menu_result" = "" ]; then
-		exit
-	fi
+	case "$main_menu_result" in
+		"1")
+			echo "Selecting Image For App Grid"
+			file="$(select_image)"
+			cp -av "$file" "$HOME/.phosh-appgrid-image"
+			restart_phosh
+			;;
+		"2")
+			echo "Selecting Image for Lock Screen"
+			file="$(select_image)"
+			cp -av "$file" "$HOME/.phosh-lockscreen-image"
+			restart_phosh
+			;;
+		"3")
+			restart_phosh
+			;;
+		*)
+			exit
+	esac
 done
