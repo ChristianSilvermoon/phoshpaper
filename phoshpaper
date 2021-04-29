@@ -1,0 +1,32 @@
+#!/bin/bash
+# Phoshpaper is not associated with Purism, etc.
+# License: The Unlicense
+
+menu() {
+	zenity --title "Phoshpaper" "$@"
+}
+
+
+
+main_menu() {
+	main_menu_result=$(
+		menu --text "Set custom wallpaper for Phosh App Grid\nand Lock Screen" \
+			--cancel-label "Exit" \
+			--ok-label "Continue" \
+			--list --radiolist --hide-column 2 --hide-header \
+			--column "state" --column "#" --column "Choose an Option" \
+			TRUE "1" "Select App Grid Wallpaper" \
+			FALSE "2" "Select Lock Screen Wallpaper" \
+			FALSe "3" "Remove Custom GTK.css"
+	)
+}
+
+while true; do
+	main_menu
+
+	echo "Main Menu: $main_menu_result"
+
+	if [ "$main_menu_result" = "" ]; then
+		exit
+	fi
+done
