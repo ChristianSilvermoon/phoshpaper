@@ -64,7 +64,7 @@ main_menu() {
 
 restart_phosh() {
 	menu --question --no-wrap --text "Phosh may need to be restarted for \nchanges to take effect\n\nThis script assumes you have \n<b>systemd</b> and <b>pkexec</b>\n\nIf this is not how your distro handles Phosh\nPlease manually restart it\nor reboot your device.\n\nDo that now?\n• All apps will close\n• You will lose any unsaved work!"
-	if [ "$?" = "0"] && [ "$(command -v systemctl)" ] && [ "$(command -v pkexec)" ]; then
+	if [ "$?" = "0" ] && [ "$(command -v systemctl)" ] && [ "$(command -v pkexec)" ]; then
 	       	pkexec systemctl restart phosh
 	fi
 	exit
